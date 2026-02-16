@@ -1,5 +1,6 @@
 import argparse
 import json
+import string
 
 
 def main() -> None:
@@ -22,10 +23,12 @@ def main() -> None:
             
             # Find movies that contain query's keywords
             results = []
-            query = args.query
+            trans_table = str.maketrans('', '', string.punctuation)
+
+            query = args.query.lower().translate(trans_table)
             for movie in movies:
-                title = movie.get("title", "")
-                if query.lower() in title.lower():
+                title = movie.get("title", "").lower().translate(trans_table)
+                if query in title:
                     results.append(movie)
                     if len(results) == 5:
                         break
