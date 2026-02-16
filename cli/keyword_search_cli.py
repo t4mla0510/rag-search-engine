@@ -1,4 +1,5 @@
 import argparse
+import json
 
 
 def main() -> None:
@@ -13,6 +14,25 @@ def main() -> None:
     match args.command:
         case "search":
             print(f"Searching for: {args.query}")
+            
+            # Load movies
+            with open("./data/movies.json", "r", encoding="utf-8") as file:
+                data = json.load(file)
+            movies = data.get("movies", [])
+            
+            # Find movies that contain query's keywords
+            results = []
+            query = args.query
+            for movie in movies:
+                title = movie.get("title", "")
+                if query.lower() in title.lower():
+                    results.append(movie)
+                    if len(results) == 5:
+                        break
+
+            # Print the result
+            for idx, movie in enumerate(movies, start=1):
+                print(f"{idx}. {movie["title"]}")
             pass
         case _:
             parser.print_help()
