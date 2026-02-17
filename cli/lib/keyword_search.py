@@ -17,8 +17,10 @@ class InvertedIndex:
     def __init__(self) -> None:
         self.index = defaultdict(set)
         self.docmap: dict[int, dict] = {}
+        self.term_frequencies = defaultdict(Counter)
         self.index_path = os.path.join(CACHE_DIR, "index.pkl")
         self.docmap_path = os.path.join(CACHE_DIR, "docmap.pkl")
+        self.tf_path = os.path.join(CACHE_DIR, "term_frequencies.pkl")
     
     def build(self) -> None:
         movies = load_movies()
@@ -34,12 +36,16 @@ class InvertedIndex:
             pickle.dump(self.index, f)
         with open(self.docmap_path, "wb") as f:
             pickle.dump(self.docmap, f)
+        with open(self.tf_path, "wb") as f:
+            pickle.dump(self.term_frequencies, f)
 
     def load(self) -> None:
         with open(self.index_path, "rb") as f:
             self.index = pickle.load(f)
         with open(self.docmap_path, "rb") as f:
             self.docmap = pickle.load(f)
+        with open(self.tf_path, "rb") as f:
+            self.term_frequencies = pickle.load(f)
     
     def get_documents(self, term: str) -> list[int]:
         doc_ids = self.index.get(term, set())
@@ -49,6 +55,17 @@ class InvertedIndex:
         tokens = tokenize_text(text)
         for token in set(tokens):
             self.index[token].add(doc_id)
+        for token in tokens:
+            self.term_frequencies[doc_id][token] += 1
+    
+    def get_tf(self, doc_id: int, term: str) -> int:
+        term_tokens = tokenize_text(term)
+        if len(term_tokens) != 1:
+            raise ValueError("Term must tokenize to exactly one token.")
+        token = term_tokens[0]
+        if doc_id not in self.term_frequencies:
+            return 0
+        return self.term_frequencies[doc_id][token]
 
 
 def build_command():
@@ -74,6 +91,13 @@ def search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
                 return results
     
     return results
+
+
+def tf_command(doc_id: int, term: str) -> int:
+    idx = InvertedIndex()
+    idx.load()
+    tf = idx.get_tf(doc_id, term)
+    return tf
 
 
 def preprocess(text: str) -> str:
