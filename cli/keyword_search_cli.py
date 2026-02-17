@@ -3,6 +3,8 @@ import json
 import string
 from typing import List, Dict
 
+from nltk.stem import PorterStemmer
+
 def load_stopwords(file_path: str) -> List[str]:
     """Load stop words from .txt file"""
     with open(file_path, "r", encoding="utf-8") as file:
@@ -17,19 +19,19 @@ def preprocessing(text: str) -> List[str]:
 
 def load_movies(file_path: str) -> List[Dict]:
     """Load movies from JSON file"""
-    with open("./data/movies.json", "r", encoding="utf-8") as file:
+    with open(file_path, "r", encoding="utf-8") as file:
         data = json.load(file)
     return data.get("movies", [])
 
-def search_movies(query: str, movies: List[Dict], stop_words: List[str], limit: int = 5) -> List[Dict]:
+def search_movies(query: str, movies: List[Dict], stop_words: List[str], stemmer: PorterStemmer, limit: int = 5) -> List[Dict]:
     """Return movies where at least one query token matches part of any title token."""
     query_tokens = preprocessing(query)
-    query_tokens = [token for token in query_tokens if token not in stop_words]
+    query_tokens = [stemmer.stem(token) for token in query_tokens if token not in stop_words]
     results = []
 
     for movie in movies:
         title_tokens = preprocessing(movie.get("title", ""))
-        title_tokens = [token for token in title_tokens if token not in stop_words]
+        title_tokens = [stemmer.stem(token) for token in title_tokens if token not in stop_words]
 
         match_found = any(
             q_token in t_token
@@ -65,12 +67,13 @@ def main() -> None:
         case "search":
             print(f"Searching for: {args.query}")
             
-            # Load stopwords and movies
-            stop_words = load_stopwords("./data/stopwords.txt")
+            # Load movies, stop words and stemmer
             movies = load_movies("./data/movies.json")
-            
+            stop_words = load_stopwords("./data/stopwords.txt")
+            stemmer = PorterStemmer()
+
             # Find movies that contain query's keywords
-            results = search_movies(args.query, movies, stop_words)
+            results = search_movies(args.query, movies, stop_words, stemmer)
 
             # Print the result
             print_result(results)
