@@ -1,7 +1,7 @@
 import os
+import math
 import pickle
 import string
-from typing import Dict
 from collections import defaultdict, Counter
 
 from nltk.stem import PorterStemmer
@@ -99,6 +99,18 @@ def tf_command(doc_id: int, term: str) -> int:
     tf = idx.get_tf(doc_id, term)
     return tf
 
+
+def idf_command(term: str) -> int:
+    idx = InvertedIndex()
+    idx.load()
+    term_tokens = tokenize_text(term)
+    if len(term_tokens) != 1:
+        raise ValueError("IDF can only calculated for a single token.")
+    token = term_tokens[0]
+    nums_docs = len(idx.docmap)
+    docs_freq = len(idx.index.get(token, []))
+    idf = math.log((nums_docs + 1) / (docs_freq + 1))
+    return idf
 
 def preprocess(text: str) -> str:
     text = text.lower()
