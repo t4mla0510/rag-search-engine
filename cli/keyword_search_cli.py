@@ -1,6 +1,8 @@
-import argparse
+import os
 import json
+import pickle
 import string
+import argparse
 from typing import List, Dict
 
 from nltk.stem import PorterStemmer
@@ -52,7 +54,42 @@ def print_result(results: List[Dict]):
         return
 
     for idx, movie in enumerate(results, start=1):
-        print(f"{idx}. {movie.get("title", "")}")
+        print(f"{idx}. {movie.get('title', '')}")
+
+
+class InvertedIndex:
+    def __init__(self):
+        self.index: Dict[str, set[int]] = {}
+        self.docmap: Dict[int, Dict] = {}
+    
+    def _add_document(self, doc_id: int, text: str) -> None:
+        tokens = text.lower().split()
+        for token in tokens:
+            if token not in self.index:
+                self.index[token] = set()
+            self.index[token].add(doc_id)
+    
+    def get_documents(self, term: str) -> List[int]:
+        term = term.lower()
+        if term in self.index:
+            return sorted(self.index[term])
+        return []
+    
+    def build(self, movies: List[Dict]) -> None:
+        for movie in movies:
+            doc_id = movie["id"]
+            self.docmap[doc_id] = movie
+
+            text = f"{movie["title"]} {movie["description"]}"
+            self._add_document(doc_id, text)
+
+    def save(self) -> None:
+        os.makedirs("cache", exist_ok=True)
+        with open("./cache/index.pkl", "wb") as f:
+            pickle.dump(self.index, f)
+        
+        with open("./cache/docmap.pkl", "wb") as f:
+            pickle.dump(self.docmap, f)
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Keyword Search CLI")
@@ -60,6 +97,8 @@ def main() -> None:
 
     search_parser = subparsers.add_parser("search", help="Search movies using BM25")
     search_parser.add_argument("query", type=str, help="Search query")
+
+    build_parser = subparsers.add_parser("build", help="Build inverted index")
 
     args = parser.parse_args()
 
@@ -77,6 +116,15 @@ def main() -> None:
 
             # Print the result
             print_result(results)
+            pass
+        case "build":
+            index = InvertedIndex()
+            movies = load_movies("./data/movies.json")
+            index.build(movies)
+            index.save()
+
+            docs = index.get_documents("merida")
+            print(f"First document for token 'merida' = {docs[0]}")
             pass
         case _:
             parser.print_help()
