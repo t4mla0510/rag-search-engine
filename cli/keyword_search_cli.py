@@ -3,6 +3,12 @@ import json
 import string
 from typing import List, Dict
 
+def load_stopwords(file_path: str) -> List[str]:
+    """Load stop words from .txt file"""
+    with open(file_path, "r", encoding="utf-8") as file:
+        stop_words = file.read().splitlines()
+    return stop_words
+
 def preprocessing(text: str) -> List[str]:
     """Lowercase, remove punctuation, tokenizing"""
     trans_table = str.maketrans('','', string.punctuation)
@@ -15,13 +21,15 @@ def load_movies(file_path: str) -> List[Dict]:
         data = json.load(file)
     return data.get("movies", [])
 
-def search_movies(query: str, movies: List[Dict], limit: int = 5) -> List[Dict]:
+def search_movies(query: str, movies: List[Dict], stop_words: List[str], limit: int = 5) -> List[Dict]:
     """Return movies where at least one query token matches part of any title token."""
     query_tokens = preprocessing(query)
+    query_tokens = [token for token in query_tokens if token not in stop_words]
     results = []
 
     for movie in movies:
         title_tokens = preprocessing(movie.get("title", ""))
+        title_tokens = [token for token in title_tokens if token not in stop_words]
 
         match_found = any(
             q_token in t_token
@@ -57,11 +65,12 @@ def main() -> None:
         case "search":
             print(f"Searching for: {args.query}")
             
-            # Load movies
+            # Load stopwords and movies
+            stop_words = load_stopwords("./data/stopwords.txt")
             movies = load_movies("./data/movies.json")
             
             # Find movies that contain query's keywords
-            results = search_movies(args.query, movies)
+            results = search_movies(args.query, movies, stop_words)
 
             # Print the result
             print_result(results)
