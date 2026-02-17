@@ -112,6 +112,12 @@ def idf_command(term: str) -> int:
     idf = math.log((nums_docs + 1) / (docs_freq + 1))
     return idf
 
+def tfidf_command(doc_id: int, term: str) -> float:
+    tf = tf_command(doc_id, term)
+    idf = idf_command(term)
+    tfidf = tf * idf
+    return tfidf
+
 def preprocess(text: str) -> str:
     text = text.lower()
     text = text.translate(str.maketrans("","", string.punctuation))
