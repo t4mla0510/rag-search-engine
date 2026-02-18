@@ -64,17 +64,16 @@ class SemanticSearch:
         return self.model.encode([text])[0]
 
 
-def chunk_command(text: str, chunk_size: int) -> None:
+def chunk_command(text: str, chunk_size: int, overlap: int) -> None:
     words = text.split()
-    chunk = []
     chunks = []
-    for word in words:
-        chunk.append(word)
-        if len(chunk) == chunk_size:
+    step = chunk_size - overlap if overlap > 0 else chunk_size
+    for i in range(0, len(words), step):
+        chunk = words[i:i + chunk_size]
+        if chunk:
             chunks.append(" ".join(chunk))
-            chunk = []
-    if chunk:
-        chunks.append(" ".join(chunk))
+        if i + chunk_size >= len(words):
+            break
     print(f"Chunking {chunk_size} characters")
     for idx, chunk in enumerate(chunks, start=1):
         print(f"{idx}. {chunk}\n")

@@ -29,7 +29,8 @@ def main():
 
     chunking_parser = sub_parser.add_parser("chunk", help="Chunking given text")
     chunking_parser.add_argument("text", type=str, help="Text to be chunked")
-    chunking_parser.add_argument("--chunk_size", type=int, nargs="?", default=200, help="Text to be chunked")
+    chunking_parser.add_argument("--chunk_size", type=int, nargs="?", default=100, help="Size of chunk")
+    chunking_parser.add_argument("--overlap", type=int, nargs="?", default=20, help="Overlap between chunks")
 
     args = parser.parse_args()
 
@@ -48,7 +49,7 @@ def main():
                 print(f"{idx}. {movie["title"]} (score: {movie["score"]:.4f})")
                 print(f"   {movie["description"][:100]} ...")
         case "chunk":
-            chunk_command(args.text, args.chunk_size)
+            chunk_command(args.text, args.chunk_size, args.overlap)
         case _:
             parser.print_help()
 
