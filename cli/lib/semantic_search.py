@@ -6,6 +6,19 @@ EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 class SemanticSearch:
     def __init__(self):
         self.model = SentenceTransformer(EMBEDDING_MODEL)
+    
+    def generate_embedding(self, text: str) -> list[float]:
+        if len(text) == 0 or text.isspace():
+            raise ValueError("Input text is empty or contains only whitespace.")
+        return self.model.encode([text])[0]
+
+
+def embed_text(text: str) -> list[float]:
+    semantic_searching = SemanticSearch()
+    embeddings = semantic_searching.generate_embedding(text)
+    print(f"Text: {text}")
+    print(f"First 3 dimensions: {embeddings[:3]}")
+    print(f"Dimensions: {embeddings.shape[0]}")
 
 
 def verify_model():
