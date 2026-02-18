@@ -24,3 +24,7 @@ def subtract_vectors(vec1: list[float], vec2: list[float]) -> list[float]:
         raise ValueError("Dimension mismatch")
     return [v1 - v2 for v1, v2 in zip(vec1, vec2)]
 
+def dot(vec1: list[float], vec2: list[float]) -> list[float]:
+    if len(vec1) != len(vec2):
+        raise ValueError("Dimension mismatch")
+    return sum([v1 * v2 for v1, v2 in zip(vec1, vec2)])
