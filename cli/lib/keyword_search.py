@@ -68,14 +68,6 @@ class InvertedIndex:
             self.term_frequencies[doc_id][token] += 1
         self.doc_lengths[doc_id] = len(tokens)
 
-    def _get_avg_doc_length(self) -> float:
-        if not self.doc_lengths or len(self.doc_lengths) == 0:
-            return 0.0
-        total_length = 0
-        for length in self.doc_lengths.values():
-            total_length += length
-        return total_length / len(self.doc_lengths)
-    
     def get_tf(self, doc_id: int, term: str) -> int:
         term_tokens = tokenize_text(term)
         if len(term_tokens) != 1:
@@ -97,6 +89,14 @@ class InvertedIndex:
         docs_freq = len(self.index[token])
         return math.log((nums_docs - docs_freq + 0.5) / (docs_freq + 0.5) + 1)
     
+    def _get_avg_doc_length(self) -> float:
+        if not self.doc_lengths or len(self.doc_lengths) == 0:
+            return 0.0
+        total_length = 0
+        for length in self.doc_lengths.values():
+            total_length += length
+        return total_length / len(self.doc_lengths)
+    
     def get_bm25_tf(self, doc_id: int, term: str, k1: float = BM25_K1, b: float = BM25_B) -> float:
         tf = self.get_tf(doc_id, term)
         doc_length = self.doc_lengths[doc_id]
@@ -106,7 +106,32 @@ class InvertedIndex:
         else:
             length_norm = 1
         return (tf * (k1 + 1)) / (tf + k1 * length_norm)
-        
+    
+    def bm25(self, doc_id: int, term: str) -> float:
+        bm25_tf = self.get_bm25_tf(doc_id, term)
+        bm25_idf = self.get_bm25_idf(term)
+        return bm25_tf * bm25_idf
+    
+    def bm25_search(self, query: str, limit: int) -> list[dict]:
+        query_tokens = tokenize_text(query)
+        scores = {}
+        for doc_id in self.docmap:
+            score = 0.0
+            for token in query_tokens:
+                score += self.bm25(doc_id, token)
+            scores[doc_id] = score
+        sorted_docs = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+        results = []
+        for doc_id, score in sorted_docs[:limit]:
+            doc = self.docmap[doc_id]
+            result = {
+                "doc_id": doc['id'],
+                "title": doc['title'],
+                "document": doc['description'],
+                "score": score
+            }
+            results.append(result)
+        return results
 
 def build_command() -> None:
     idx = InvertedIndex()
@@ -129,7 +154,6 @@ def search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
             results.append(doc)
             if len(results) >= limit:
                 return results
-    
     return results
 
 
@@ -175,6 +199,12 @@ def bm25_tf_command(doc_id: int, term: str, k1: float) -> float:
     else:
         bm25_tf = idx.get_bm25_tf(doc_id, term)
     return bm25_tf
+
+
+def bm25_search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
+    idx = InvertedIndex()
+    idx.load()
+    return idx.bm25_search(query, limit)
 
 
 def preprocess(text: str) -> str:
