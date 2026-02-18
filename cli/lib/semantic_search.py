@@ -5,6 +5,7 @@ from sentence_transformers import SentenceTransformer
 from lib.search_utils import (
     CACHE_DIR,
     EMBEDDING_MODEL,
+    DEFAULT_SEARCH_LIMIT,
     load_movies
 )
 
@@ -16,6 +17,24 @@ class SemanticSearch:
         self.embeddings: list[list[float]] = None
         self.documents: list[dict] = None
         self.document_map: dict[int, dict] = {}
+
+    def search(self, query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
+        if self.embeddings is None:
+            raise ValueError("No embeddings loaded. Call `load_or_create_embeddings` first.")
+        query_embedding = self.generate_embedding(query)
+        scores = []
+        for doc_embedding, doc in zip(self.embeddings, self.documents):
+            score = cosine_similariy(query_embedding, doc_embedding)
+            scores.append((score, doc))
+        sorted_scores = sorted(scores, key=lambda x: x[0], reverse=True)
+        results = []
+        for score, doc in sorted_scores[:limit]:
+            results.append({
+                "score": score,
+                "title": doc["title"],
+                "description": doc["description"]
+            })
+        return results
 
     def build_embeddings(self, documents: list[dict]) -> list[list[float]]:
         self.documents = documents
@@ -43,6 +62,13 @@ class SemanticSearch:
         if len(text) == 0 or text.isspace():
             raise ValueError("Input text is empty or contains only whitespace.")
         return self.model.encode([text])[0]
+
+
+def search_command(query: str, limit: int) -> list[dict]:
+    semantic_search = SemanticSearch()
+    documents = load_movies()
+    semantic_search.load_or_create_embeddings(documents)
+    return semantic_search.search(query, limit)
 
 
 def embed_query_text(query: str) -> None:
