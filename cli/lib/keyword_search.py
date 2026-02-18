@@ -5,6 +5,7 @@ import string
 from collections import defaultdict, Counter
 
 from nltk.stem import PorterStemmer
+from tqdm import tqdm
 from .search_utils import (
     CACHE_DIR,
     DEFAULT_SEARCH_LIMIT,
@@ -24,7 +25,7 @@ class InvertedIndex:
     
     def build(self) -> None:
         movies = load_movies()
-        for m in movies:
+        for m in tqdm(movies):
             doc_id = m["id"]
             doc_description = f"{m['title']} {m['description']}"
             self.docmap[doc_id] = m
@@ -67,8 +68,21 @@ class InvertedIndex:
             return 0
         return self.term_frequencies[doc_id][token]
 
+    def get_bm25_idf(self, term: str) -> float:
+        term_tokens = tokenize_text(term)
+        valid_tokens = []
+        for token in term_tokens:
+            if not token:
+                raise ValueError("Term must tokenize to exactly one token.")
+            valid_tokens.append(token)
+        token = valid_tokens[0]
+        nums_docs = len(self.docmap)
+        docs_freq = len(self.index[token])
+        bm25_idf = math.log((nums_docs - docs_freq + 0.5) / (docs_freq + 0.5) + 1)
+        return bm25_idf
+        
 
-def build_command():
+def build_command() -> None:
     idx = InvertedIndex()
     idx.build()
     idx.save()
@@ -111,6 +125,14 @@ def idf_command(term: str) -> int:
     docs_freq = len(idx.index.get(token, []))
     idf = math.log((nums_docs + 1) / (docs_freq + 1))
     return idf
+
+
+def bm25_idf_command(term: str) -> float:
+    idx = InvertedIndex()
+    idx.load()
+    bm25_idf = idx.get_bm25_idf(term)
+    return bm25_idf
+
 
 def tfidf_command(doc_id: int, term: str) -> float:
     tf = tf_command(doc_id, term)
