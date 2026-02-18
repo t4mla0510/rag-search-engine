@@ -9,6 +9,7 @@ from tqdm import tqdm
 from .search_utils import (
     CACHE_DIR,
     DEFAULT_SEARCH_LIMIT,
+    BM25_K1,
     load_movies,
     load_stopwords
 )
@@ -80,6 +81,11 @@ class InvertedIndex:
         docs_freq = len(self.index[token])
         bm25_idf = math.log((nums_docs - docs_freq + 0.5) / (docs_freq + 0.5) + 1)
         return bm25_idf
+    
+    def get_bm25_tf(self, doc_id: int, term: str, k1=BM25_K1) -> float:
+        tf = self.get_tf(doc_id, term)
+        bm25_tf = (tf * (k1 + 1)) / (tf + k1)
+        return bm25_tf
         
 
 def build_command() -> None:
@@ -127,6 +133,13 @@ def idf_command(term: str) -> int:
     return idf
 
 
+def tfidf_command(doc_id: int, term: str) -> float:
+    tf = tf_command(doc_id, term)
+    idf = idf_command(term)
+    tfidf = tf * idf
+    return tfidf
+
+
 def bm25_idf_command(term: str) -> float:
     idx = InvertedIndex()
     idx.load()
@@ -134,11 +147,15 @@ def bm25_idf_command(term: str) -> float:
     return bm25_idf
 
 
-def tfidf_command(doc_id: int, term: str) -> float:
-    tf = tf_command(doc_id, term)
-    idf = idf_command(term)
-    tfidf = tf * idf
-    return tfidf
+def bm25_tf_command(doc_id: int, term: str, k1: float) -> float:
+    idx = InvertedIndex()
+    idx.load()
+    if k1 != BM25_K1:
+        bm25_tf = idx.get_bm25_tf(doc_id, term, k1)
+    else:
+        bm25_tf = idx.get_bm25_tf(doc_id, term)
+    return bm25_tf
+
 
 def preprocess(text: str) -> str:
     text = text.lower()
