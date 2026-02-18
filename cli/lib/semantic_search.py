@@ -45,15 +45,15 @@ class SemanticSearch:
         return self.model.encode([text])[0]
 
 
-def verify_embeddings():
+def embed_query_text(query: str) -> None:
     semantic_search = SemanticSearch()
-    documents = load_movies()
-    embeddings = semantic_search.load_or_create_embeddings(documents)
-    print(f"Number of docs:   {len(documents)}")
-    print(f"Embeddings shape: {embeddings.shape[0]} vectors in {embeddings.shape[1]} dimensions")
+    embedding = semantic_search.generate_embedding(query)
+    print(f"Query: {query}")
+    print(f"First 5 dimensions: {embedding[:5]}")
+    print(f"Shape: {embedding.shape}")
 
 
-def embed_text(text: str) -> list[float]:
+def embed_text(text: str) -> None:
     semantic_searching = SemanticSearch()
     embeddings = semantic_searching.generate_embedding(text)
     print(f"Text: {text}")
@@ -61,7 +61,15 @@ def embed_text(text: str) -> list[float]:
     print(f"Dimensions: {embeddings.shape[0]}")
 
 
-def verify_model():
+def verify_embeddings() -> None:
+    semantic_search = SemanticSearch()
+    documents = load_movies()
+    embeddings = semantic_search.load_or_create_embeddings(documents)
+    print(f"Number of docs:   {len(documents)}")
+    print(f"Embeddings shape: {embeddings.shape[0]} vectors in {embeddings.shape[1]} dimensions")
+
+
+def verify_model() -> None:
     sematic_search = SemanticSearch()
     print(f"Model loaded: {EMBEDDING_MODEL}")
     print(f"Max sequence length: {sematic_search.model.max_seq_length}")
