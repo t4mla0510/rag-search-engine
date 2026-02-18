@@ -5,7 +5,8 @@ from lib.semantic_search import (
     embed_text,
     verify_embeddings,
     embed_query_text,
-    search_command
+    search_command,
+    chunk_command
 )
 
 def main():
@@ -26,6 +27,10 @@ def main():
     search_parser.add_argument("query", type=str, help="Query to be searched")
     search_parser.add_argument("limit", type=int, nargs="?", default=5, help="Top-k limits")
 
+    chunking_parser = sub_parser.add_parser("chunk", help="Chunking given text")
+    chunking_parser.add_argument("text", type=str, help="Text to be chunked")
+    chunking_parser.add_argument("--chunk_size", type=int, nargs="?", default=200, help="Text to be chunked")
+
     args = parser.parse_args()
 
     match args.command:
@@ -42,6 +47,8 @@ def main():
             for idx, movie in enumerate(movies, start=1):
                 print(f"{idx}. {movie["title"]} (score: {movie["score"]:.4f})")
                 print(f"   {movie["description"][:100]} ...")
+        case "chunk":
+            chunk_command(args.text, args.chunk_size)
         case _:
             parser.print_help()
 

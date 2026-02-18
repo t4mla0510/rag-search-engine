@@ -64,6 +64,22 @@ class SemanticSearch:
         return self.model.encode([text])[0]
 
 
+def chunk_command(text: str, chunk_size: int) -> None:
+    words = text.split()
+    chunk = []
+    chunks = []
+    for word in words:
+        chunk.append(word)
+        if len(chunk) == chunk_size:
+            chunks.append(" ".join(chunk))
+            chunk = []
+    if chunk:
+        chunks.append(" ".join(chunk))
+    print(f"Chunking {chunk_size} characters")
+    for idx, chunk in enumerate(chunks, start=1):
+        print(f"{idx}. {chunk}\n")
+
+
 def search_command(query: str, limit: int) -> list[dict]:
     semantic_search = SemanticSearch()
     documents = load_movies()
