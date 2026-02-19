@@ -6,7 +6,8 @@ from lib.semantic_search import (
     verify_embeddings,
     embed_query_text,
     search_command,
-    chunk_command
+    chunk_command,
+    sentence_chunk_command
 )
 
 def main():
@@ -25,12 +26,17 @@ def main():
 
     search_parser = sub_parser.add_parser("search", help="Search with cosine similarity")
     search_parser.add_argument("query", type=str, help="Query to be searched")
-    search_parser.add_argument("limit", type=int, nargs="?", default=5, help="Top-k limits")
+    search_parser.add_argument("--limit", type=int, nargs="?", default=5, help="Top-k limits")
 
     chunking_parser = sub_parser.add_parser("chunk", help="Chunking given text")
     chunking_parser.add_argument("text", type=str, help="Text to be chunked")
     chunking_parser.add_argument("--chunk_size", type=int, nargs="?", default=100, help="Size of chunk")
     chunking_parser.add_argument("--overlap", type=int, nargs="?", default=20, help="Overlap between chunks")
+
+    sentence_parser = sub_parser.add_parser("sentence_chunk", help="Semantic chunking given text")
+    sentence_parser.add_argument("text", type=str, help="Text to be chunked")
+    sentence_parser.add_argument("--max_chunk_size", type=int, nargs="?", default=4, help="Size of chunk")
+    sentence_parser.add_argument("--overlap", type=int, nargs="?", default=0, help="Overlap between chunks")
 
     args = parser.parse_args()
 
@@ -50,6 +56,11 @@ def main():
                 print(f"   {movie["description"][:100]} ...")
         case "chunk":
             chunk_command(args.text, args.chunk_size, args.overlap)
+        case "sentence_chunk":
+            chunks = sentence_chunk_command(args.text, args.max_chunk_size, args.overlap)
+            print(f"Sentence chunking {len(chunks)} chunks")
+            for idx, chunk in enumerate(chunks, start=1):
+                print(f"{idx}. {chunk}")
         case _:
             parser.print_help()
 

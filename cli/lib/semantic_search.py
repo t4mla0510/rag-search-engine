@@ -1,4 +1,5 @@
 import os
+import re
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
@@ -62,6 +63,20 @@ class SemanticSearch:
         if len(text) == 0 or text.isspace():
             raise ValueError("Input text is empty or contains only whitespace.")
         return self.model.encode([text])[0]
+
+
+def sentence_chunk_command(text: str, max_chunk_size: int, overlap: int) -> list[str]:
+    sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+    chunks = []
+    step = max_chunk_size - overlap if overlap > 0 else max_chunk_size
+    for i in range(0, len(sentences), step):
+        chunk = sentences[i:i + max_chunk_size]
+        if not chunk:
+            break
+        chunks.append(" ".join(chunk))
+        if i + max_chunk_size >= len(sentences):
+            break
+    return chunks
 
 
 def chunk_command(text: str, chunk_size: int, overlap: int) -> None:
