@@ -1,5 +1,6 @@
 import os
 import re
+import json
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
@@ -63,6 +64,59 @@ class SemanticSearch:
         if len(text) == 0 or text.isspace():
             raise ValueError("Input text is empty or contains only whitespace.")
         return self.model.encode([text])[0]
+
+
+class ChunkedSemanticSearch(SemanticSearch):
+    def __init__(self) -> None:
+        super().__init__()
+        self.chunk_embeddings: list[list[float]] = None
+        self.chunk_metadata: list[dict] = None
+
+    def build_chunk_embeddings(self, documents: list[dict]) -> list[list[float]]:
+        self.documents = documents
+        for doc in documents:
+            self.document_map[doc["id"]] = doc
+        all_chunks = []
+        chunk_metadata = []
+        for movie_idx, doc in enumerate(documents):
+            if len(doc["description"]) == 0 or doc["description"].isspace():
+                continue
+            doc_chunks = sentence_chunk_command(doc["description"], 4, 1)
+            total_chunks = len(doc_chunks)
+            for chunk_idx, chunk in enumerate(doc_chunks):
+                all_chunks.append(chunk)
+                chunk_metadata.append({
+                    "movie_idx": movie_idx,
+                    "chunk_idx": chunk_idx,
+                    "total_chunks": total_chunks
+                })
+        self.chunk_embeddings = self.model.encode(all_chunks, show_progress_bar=True)
+        self.chunk_metadata = chunk_metadata
+        np.save(os.path.join(CACHE_DIR, "chunk_embeddings.npy"), self.chunk_embeddings)
+        with open(os.path.join(CACHE_DIR, "chunk_metadata.json"), "w") as f:
+            json.dump({"chunks": chunk_metadata, "total_chunks": len(all_chunks)}, f, indent=2)
+        return self.chunk_embeddings
+    
+    def load_or_create_chunk_embeddings(self, documents: list[dict]) -> list[list[float]]:
+        self.documents = documents
+        for doc in documents:
+            self.document_map[doc["id"]] = doc
+        chunk_embeddings_path = os.path.join(CACHE_DIR, "chunk_embeddings.npy")
+        metadata_path = os.path.join(CACHE_DIR, "chunk_metadata.json")
+        if os.path.exists(chunk_embeddings_path) and os.path.exists(metadata_path):
+            self.chunk_embeddings = np.load(chunk_embeddings_path)
+            with open(metadata_path, "r") as f:
+                self.chunk_metadata = json.load(f)
+            return self.chunk_embeddings
+        else:
+            return self.build_chunk_embeddings(documents)
+
+
+def embed_chunks_command():
+    documents = load_movies()
+    chunked_semantic_search = ChunkedSemanticSearch()
+    embeddings = chunked_semantic_search.load_or_create_chunk_embeddings(documents)
+    print(f"Generated {len(embeddings)} chunked embeddings")
 
 
 def sentence_chunk_command(text: str, max_chunk_size: int, overlap: int) -> list[str]:
