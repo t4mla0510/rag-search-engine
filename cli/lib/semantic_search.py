@@ -112,7 +112,7 @@ class ChunkedSemanticSearch(SemanticSearch):
             return self.chunk_embeddings
         return self.build_chunk_embeddings(documents)
     
-    def search_chunks(self, query: str, limit: int = 10):
+    def search_chunks(self, query: str, limit: int = 10) -> list[dict]:
         query_embeddings = self.generate_embedding(query)
         chunk_scores = []
         for idx, embeddings in enumerate(self.chunk_embeddings):
@@ -143,14 +143,14 @@ class ChunkedSemanticSearch(SemanticSearch):
         return results
 
 
-def search_chunks_command(query: str, limit: int):
+def search_chunks_command(query: str, limit: int) -> list[dict]:
     documents = load_movies()
     chunked_semantic_search = ChunkedSemanticSearch()
     chunked_semantic_search.load_or_create_chunk_embeddings(documents)
     return chunked_semantic_search.search_chunks(query, limit)
 
 
-def embed_chunks_command():
+def embed_chunks_command() -> None:
     documents = load_movies()
     chunked_semantic_search = ChunkedSemanticSearch()
     embeddings = chunked_semantic_search.load_or_create_chunk_embeddings(documents)
