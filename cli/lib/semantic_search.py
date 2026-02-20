@@ -158,15 +158,24 @@ def embed_chunks_command():
 
 
 def sentence_chunk_command(text: str, max_chunk_size: int, overlap: int) -> list[str]:
-    sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+    text = text.strip()
+    if not text:
+        return []
+    sentences = re.split(r'(?<=[.!?])\s+', text)
+    if len(sentences) == 1:
+        if not re.search(r"[.!?]$", sentences[0]):
+            sentences = [sentences[0]]
+    clean_sentences = [sentence.strip() for sentence in sentences if sentence.strip()]
+    if not clean_sentences:
+        return []
     chunks = []
-    step = max_chunk_size - overlap if overlap > 0 else max_chunk_size
-    for i in range(0, len(sentences), step):
-        chunk = sentences[i:i + max_chunk_size]
-        if not chunk:
-            break
-        chunks.append(" ".join(chunk))
-        if i + max_chunk_size >= len(sentences):
+    step = max(1, max_chunk_size - overlap)
+    for i in range(0, len(clean_sentences), step):
+        chunk = clean_sentences[i:i + max_chunk_size]
+        chunk_text = " ".join(chunk).strip()
+        if chunk_text:
+            chunks.append(chunk_text)
+        if i + max_chunk_size >= len(clean_sentences):
             break
     return chunks
 
