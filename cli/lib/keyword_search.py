@@ -133,6 +133,7 @@ class InvertedIndex:
             results.append(result)
         return results
 
+
 def build_command() -> None:
     idx = InvertedIndex()
     idx.build()
