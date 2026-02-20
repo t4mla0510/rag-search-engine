@@ -8,7 +8,8 @@ from lib.semantic_search import (
     search_command,
     chunk_command,
     sentence_chunk_command,
-    embed_chunks_command
+    embed_chunks_command,
+    search_chunks_command
 )
 
 def main():
@@ -40,6 +41,10 @@ def main():
     sentence_parser.add_argument("--overlap", type=int, nargs="?", default=0, help="Overlap between chunks")
 
     sub_parser.add_parser("embed_chunks", help="Create chunk embeddings of all documents")
+    
+    search_chunked_parser = sub_parser.add_parser("search_chunks", help="Search relevant chunks")
+    search_chunked_parser.add_argument("query", type=str, help="Query to be searched")
+    search_chunked_parser.add_argument("--limit", type=int, nargs="?", default=5, help="Top-k chunks")
 
     args = parser.parse_args()
 
@@ -66,6 +71,11 @@ def main():
                 print(f"{idx}. {chunk}")
         case "embed_chunks":
             embed_chunks_command()
+        case "search_chunks":
+            relevant_chunks = search_chunks_command(args.query, args.limit)
+            for idx, chunk in enumerate(relevant_chunks, start=1):
+                print(f"\n{idx}. {chunk["title"]} (score: {chunk["score"]:.4f})")
+                print(f"   {chunk["description"]}...")
         case _:
             parser.print_help()
 

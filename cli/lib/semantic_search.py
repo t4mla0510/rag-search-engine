@@ -79,7 +79,8 @@ class ChunkedSemanticSearch(SemanticSearch):
         all_chunks = []
         chunk_metadata = []
         for movie_idx, doc in enumerate(documents):
-            if len(doc["description"]) == 0 or doc["description"].isspace():
+            description = doc.get("description", "")
+            if not description or str(description).isspace():
                 continue
             doc_chunks = sentence_chunk_command(doc["description"], 4, 1)
             total_chunks = len(doc_chunks)
@@ -94,7 +95,7 @@ class ChunkedSemanticSearch(SemanticSearch):
         self.chunk_metadata = chunk_metadata
         np.save(os.path.join(CACHE_DIR, "chunk_embeddings.npy"), self.chunk_embeddings)
         with open(os.path.join(CACHE_DIR, "chunk_metadata.json"), "w") as f:
-            json.dump({"chunks": chunk_metadata, "total_chunks": len(all_chunks)}, f, indent=2)
+            json.dump({"chunks": self.chunk_metadata, "total_chunks": len(all_chunks)}, f, indent=2)
         return self.chunk_embeddings
     
     def load_or_create_chunk_embeddings(self, documents: list[dict]) -> list[list[float]]:
@@ -106,10 +107,47 @@ class ChunkedSemanticSearch(SemanticSearch):
         if os.path.exists(chunk_embeddings_path) and os.path.exists(metadata_path):
             self.chunk_embeddings = np.load(chunk_embeddings_path)
             with open(metadata_path, "r") as f:
-                self.chunk_metadata = json.load(f)
+                data = json.load(f)
+                self.chunk_metadata = data["chunks"]
             return self.chunk_embeddings
-        else:
-            return self.build_chunk_embeddings(documents)
+        return self.build_chunk_embeddings(documents)
+    
+    def search_chunks(self, query: str, limit: int = 10):
+        query_embeddings = self.generate_embedding(query)
+        chunk_scores = []
+        for idx, embeddings in enumerate(self.chunk_embeddings):
+            cosine_score = cosine_similariy(query_embeddings, embeddings)
+            metadata = self.chunk_metadata[idx]
+            chunk_scores.append({
+                "chunk_idx": metadata["chunk_idx"],
+                "movie_idx": metadata["movie_idx"],
+                "score": float(cosine_score)
+            })
+        movie_scores = {}
+        for chunk in chunk_scores:
+            movie_idx = chunk["movie_idx"]
+            score = chunk["score"]
+            if movie_idx not in movie_scores or score > movie_scores[movie_idx]["score"]:
+                movie_scores[movie_idx] = chunk
+        sorted_movies = sorted(movie_scores.values(), key=lambda x: x["score"], reverse=True)
+        results = []
+        for item in sorted_movies[:limit]:
+            movie = self.document_map[item["movie_idx"]]
+            results.append({
+                "id": movie["id"],
+                "title": movie["title"],
+                "description": movie["description"][:100],
+                "score": item["score"],
+                "metadata": item["chunk_idx"]
+            })
+        return results
+
+
+def search_chunks_command(query: str, limit: int):
+    documents = load_movies()
+    chunked_semantic_search = ChunkedSemanticSearch()
+    chunked_semantic_search.load_or_create_chunk_embeddings(documents)
+    return chunked_semantic_search.search_chunks(query, limit)
 
 
 def embed_chunks_command():
@@ -203,10 +241,12 @@ def dot(vec1: list[float], vec2: list[float]) -> list[float]:
     return sum([v1 * v2 for v1, v2 in zip(vec1, vec2)])
 
 
-def cosine_similariy(vec1: list[float], vec2: list[float]) -> list[float]:
+def cosine_similariy(vec1: list[float], vec2: list[float]) -> float:
     if len(vec1) != len(vec2):
         raise ValueError("Dimension mismatch")
-    dot_product = dot(vec1, vec2)
-    magnitude_vec1 = np.linalg.norm(vec1)
-    magnitude_vec2 = np.linalg.norm(vec2)
-    return dot_product / (magnitude_vec1 * magnitude_vec2)
+    dot_product = np.dot(vec1, vec2)
+    norm1 = np.linalg.norm(vec1)
+    norm2 = np.linalg.norm(vec2)
+    if norm1 == 0 or norm2 == 0:
+        return 0.0
+    return dot_product / (norm1 * norm2)
