@@ -1,4 +1,5 @@
 import os
+import time
 from dotenv import load_dotenv
 
 from google import genai
@@ -76,14 +77,14 @@ class HybridSearch:
         return sorted_results[:limit]
         
     def rrf_search(self, query: str, k: float, limit: int = 10) -> None:
-        bm25_raw = self._bm25_search(query, limit=limit*500)
-        semantic_raw = self.semantic_search.search_chunks(query, limit=limit*500)
+        bm25_raw = self._bm25_search(query, limit=limit*100)
+        semantic_raw = self.semantic_search.search_chunks(query, limit=limit*100)
         
         score_mapping = {}
         for i, res in enumerate(bm25_raw):
             doc_id = res["doc_id"]
             rank = i + 1
-            score = rrf_score(rank)
+            score = rrf_score(rank, k)
             score_mapping[doc_id] = {
                 "title": res["title"],
                 "description": res["document"],
@@ -94,7 +95,7 @@ class HybridSearch:
         for i, res in enumerate(semantic_raw):
             doc_id = res["id"]
             rank = i + 1
-            score = rrf_score(rank)
+            score = rrf_score(rank, k)
             if doc_id in score_mapping:
                 score_mapping[doc_id]["rrf_total"] += score
                 score_mapping[doc_id]["semantic_rank"] = rank
@@ -119,6 +120,35 @@ class HybridSearch:
             })
         sorted_results = sorted(final_results, key=lambda x: x["rrf_score"], reverse=True)
         return sorted_results[:limit]
+
+
+def individual_rerank(query: str, documents: list[dict], limit: int) -> list[dict]:
+    load_dotenv()
+    api_key = os.environ.get("GEMINI_API_KEY")
+    client = genai.Client(api_key=api_key)
+    for doc in documents:
+        system_prompt = f"""Rate how well this movie matches the search query.
+
+        Query: "{query}"
+        Movie: {doc.get("title", "")} - {doc.get("description", "")}
+
+        Consider:
+        - Direct relevance to query
+        - User intent (what they're looking for)
+        - Content appropriateness
+
+        Rate 0-10 (10 = perfect match).
+        Give me ONLY the number in your response, no other text or explanation.
+
+        Score:"""
+        response = client.models.generate_content(
+            model=LLM_MODEL,
+            contents=system_prompt
+        )
+        doc["rerank_score"] = int(response.text)
+        time.sleep(5)
+    sorted_movies = sorted(documents, key=lambda x: x["rerank_score"], reverse=True)
+    return sorted_movies[:limit]
 
 
 def expanding(query: str) -> str:

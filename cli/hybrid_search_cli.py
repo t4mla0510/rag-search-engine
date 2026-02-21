@@ -5,7 +5,8 @@ from lib.hybrid_search import (
     rrf_search_command,
     fix_spelling,
     rewrite,
-    expanding
+    expanding,
+    individual_rerank
 )
 
 def main() -> None:
@@ -25,6 +26,7 @@ def main() -> None:
     rrf_search_parser.add_argument("--k", type=int, default=60, nargs="?", help="The k parameter to control weight betweene higher-rank and lower-rank one")
     rrf_search_parser.add_argument("--limit", type=int, default=5, nargs="?", help="Top-k limits")
     rrf_search_parser.add_argument("--enhance", type=str, choices=["spell", "rewrite", "expand"], nargs="?", help="Query enhancement method")
+    rrf_search_parser.add_argument("--rerank-method", type=str, choices=["individual"], nargs="?", help="Method to rerank")
 
     args = parser.parse_args()
 
@@ -41,43 +43,30 @@ def main() -> None:
                 print(f"   BM25: {res["keyword_score"]:.4f}, Semantic: {res["semantic_score"]:.4f}")
                 print(f"   {res["description"]}...")
         case "rrf_search":
-            if not args.enhance:
-                results = rrf_search_command(args.query, args.k, args.limit)
-                for idx, res in enumerate(results, start=1):
-                    print(f"{idx} {res["title"]}")
-                    print(f"   BM25 Rank: {res["bm25_rank"]}, Semantic Rank: {res["semantic_rank"]}")
-                    print(f"   RRF score: {res["rrf_score"]:.4f}")
-                    print(f"   {res["description"]}...")
-            else:
-                match args.enhance:
-                    case "spell":
-                        enhanced_query = fix_spelling(args.query)
-                        print(f"Enhanced query ({args.enhance}): '{args.query}' -> '{enhanced_query}'\n")
-                        results = rrf_search_command(enhanced_query, args.k, args.limit)
-                        for idx, res in enumerate(results, start=1):
-                            print(f"{idx} {res["title"]}")
-                            print(f"   BM25 Rank: {res["bm25_rank"]}, Semantic Rank: {res["semantic_rank"]}")
-                            print(f"   RRF score: {res["rrf_score"]:.4f}")
-                            print(f"   {res["description"]}...")
-                    case "rewrite":
-                        enhanced_query = rewrite(args.query)
-                        print(f"Enhanced query ({args.enhance}): '{args.query}' -> '{enhanced_query}'\n")
-                        results = rrf_search_command(enhanced_query, args.k, args.limit)
-                        for idx, res in enumerate(results, start=1):
-                            print(f"{idx} {res["title"]}")
-                            print(f"   BM25 Rank: {res["bm25_rank"]}, Semantic Rank: {res["semantic_rank"]}")
-                            print(f"   RRF score: {res["rrf_score"]:.4f}")
-                            print(f"   {res["description"]}...")
-                    case "expand":
-                        enhanced_query = expanding(args.query)
-                        print(f"Enhanced query ({args.enhance}): '{args.query}' -> '{enhanced_query}'\n")
-                        results = rrf_search_command(enhanced_query, args.k, args.limit)
-                        for idx, res in enumerate(results, start=1):
-                            print(f"{idx} {res["title"]}")
-                            print(f"   BM25 Rank: {res["bm25_rank"]}, Semantic Rank: {res["semantic_rank"]}")
-                            print(f"   RRF score: {res["rrf_score"]:.4f}")
-                            print(f"   {res["description"]}...")
-
+            search_query = args.query
+            if args.enhance:
+                enhance_functions = {
+                    "spell": fix_spelling,
+                    "rewrite": rewrite,
+                    "expand": expanding
+                }
+                enhance_func = enhance_functions.get(args.enhance)
+                if enhance_func:
+                    search_query = enhance_func(args.query)
+                    print(f"Enhanced query ({args.enhance}): '{args.query}' -> '{search_query}'\n")
+            fetch_limit = args.limit*5 if args.rerank_method == "individual" else args.limit
+            results = rrf_search_command(search_query, args.k, fetch_limit)
+            if args.rerank_method == "individual":
+                print(f"Reranking top {args.limit} results using individual method...")
+                print(f"Reciprocal Rank Fusion Results for '{args.query}' (k={args.k})\n")
+                results = individual_rerank(search_query, results, args.limit)
+            for idx, res in enumerate(results, start=1):
+                print(f"{idx} {res["title"]}")
+                if res.get("rerank_score") is not None:
+                    print(f"   Rerank Score: {res["rerank_score"]}/10")
+                print(f"   BM25 Rank: {res["bm25_rank"]}, Semantic Rank: {res["semantic_rank"]}")
+                print(f"   RRF score: {res["rrf_score"]:.4f}")
+                print(f"   {res["description"]}...")
         case _:
             parser.print_help()
 
