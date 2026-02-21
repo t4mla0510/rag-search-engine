@@ -121,6 +121,31 @@ class HybridSearch:
         return sorted_results[:limit]
 
 
+def expanding(query: str) -> str:
+    system_prompt = f"""Expand this movie search query with related terms.
+
+    Add synonyms and related concepts that might appear in movie descriptions.
+    Keep expansions relevant and focused.
+    This will be appended to the original query.
+
+    Examples:
+
+    - "scary bear movie" -> "scary horror grizzly bear movie terrifying film"
+    - "action movie with bear" -> "action thriller bear chase fight adventure"
+    - "comedy with bear" -> "comedy funny bear humor lighthearted"
+
+    Query: "{query}"
+    """
+    load_dotenv()
+    api_key = os.environ.get("GEMINI_API_KEY")
+    client = genai.Client(api_key=api_key)
+    response = client.models.generate_content(
+        model=LLM_MODEL,
+        contents=system_prompt
+    )
+    return response.text
+
+
 def rewrite(query: str) -> str:
     system_prompt = f"""Rewrite this movie search query to be more specific and searchable.
 
