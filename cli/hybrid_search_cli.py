@@ -1,7 +1,8 @@
 import argparse
 from lib.hybrid_search import (
     normalize,
-    weighted_search_command
+    weighted_search_command,
+    rrf_search_command
 )
 
 def main() -> None:
@@ -15,6 +16,11 @@ def main() -> None:
     weighted_search_parser.add_argument("query", type=str, help="Query to be searched")
     weighted_search_parser.add_argument("--alpha", type=float, default=0.5, nargs="?", help="Alpha value to balance between keywords and semantic search")
     weighted_search_parser.add_argument("--limit", type=int, default=5, nargs="?", help="Top-k limits")
+    
+    rrf_search_parser = sub_parser.add_parser("rrf_search", help="RRF search")
+    rrf_search_parser.add_argument("query", type=str, help="Query to be searched")
+    rrf_search_parser.add_argument("--k", type=int, default=60, nargs="?", help="The k parameter to control weight betweene higher-rank and lower-rank one")
+    rrf_search_parser.add_argument("--limit", type=int, default=5, nargs="?", help="Top-k limits")
 
     args = parser.parse_args()
 
@@ -28,7 +34,14 @@ def main() -> None:
             for idx, res in enumerate(results, start=1):
                 print(f"{idx} {res["title"]}")
                 print(f"   Hybrid score: {res["hybrid_score"]:.4f}")
-                print(f"   BM25L {res["keyword_score"]:.4f}, Semantic: {res["semantic_score"]:.4f}")
+                print(f"   BM25: {res["keyword_score"]:.4f}, Semantic: {res["semantic_score"]:.4f}")
+                print(f"   {res["description"]}...")
+        case "rrf_search":
+            results = rrf_search_command(args.query, args.k, args.limit)
+            for idx, res in enumerate(results, start=1):
+                print(f"{idx} {res["title"]}")
+                print(f"   BM25 Rank: {res["bm25_rank"]}, Semantic Rank: {res["semantic_rank"]}")
+                print(f"   RRF score: {res["rrf_score"]:.4f}")
                 print(f"   {res["description"]}...")
         case _:
             parser.print_help()

@@ -72,8 +72,56 @@ class HybridSearch:
         return sorted_results[:limit]
         
     def rrf_search(self, query: str, k: float, limit: int = 10) -> None:
-        raise NotImplementedError("RRF hybrid search is not implemented yet.")
+        bm25_raw = self._bm25_search(query, limit=limit*500)
+        semantic_raw = self.semantic_search.search_chunks(query, limit=limit*500)
+        
+        score_mapping = {}
+        for i, res in enumerate(bm25_raw):
+            doc_id = res["doc_id"]
+            rank = i + 1
+            score = rrf_score(rank)
+            score_mapping[doc_id] = {
+                "title": res["title"],
+                "description": res["document"],
+                "bm25_rank": rank,
+                "semantic_rank": None,
+                "rrf_total": score
+            }
+        for i, res in enumerate(semantic_raw):
+            doc_id = res["id"]
+            rank = i + 1
+            score = rrf_score(rank)
+            if doc_id in score_mapping:
+                score_mapping[doc_id]["rrf_total"] += score
+                score_mapping[doc_id]["semantic_rank"] = rank
+            else:
+                score_mapping[doc_id] = {
+                    "title": res["title"],
+                    "description": res["description"],
+                    "bm25_rank": None,
+                    "semantic_rank": rank,
+                    "rrf_total": score
+                }
+        
+        final_results = []
+        for uid, data in score_mapping.items():
+            final_results.append({
+                "id": uid,
+                "title": data["title"],
+                "description": data["description"][:100],
+                "bm25_rank": data["bm25_rank"],
+                "semantic_rank": data["semantic_rank"],
+                "rrf_score": data["rrf_total"]
+            })
+        sorted_results = sorted(final_results, key=lambda x: x["rrf_score"], reverse=True)
+        return sorted_results[:limit]
 
+
+def rrf_search_command(query: str, k: float, limit: int) -> list[dict]:
+    documents = load_movies()
+    hybrid_search = HybridSearch(documents)
+    return hybrid_search.rrf_search(query, k, limit)
+    
 
 def weighted_search_command(query: str, alpha: float, limit: float) -> list[dict]:
     documents = load_movies()
@@ -93,3 +141,7 @@ def normalize(values: list[float]) -> list[float]:
 
 def hybrid_score(bm25_score, semantic_score, alpha=0.5) -> float:
     return alpha * bm25_score + (1 - alpha) * semantic_score
+
+
+def rrf_score(rank: int, k: int = 60) -> float:
+    return 1 / (k + rank)

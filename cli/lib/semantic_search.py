@@ -78,7 +78,7 @@ class ChunkedSemanticSearch(SemanticSearch):
             self.document_map[doc["id"]] = doc
         all_chunks = []
         chunk_metadata = []
-        for movie_idx, doc in enumerate(documents):
+        for doc in documents:
             description = doc.get("description", "")
             if not description or str(description).isspace():
                 continue
@@ -87,8 +87,8 @@ class ChunkedSemanticSearch(SemanticSearch):
             for chunk_idx, chunk in enumerate(doc_chunks):
                 all_chunks.append(chunk)
                 chunk_metadata.append({
-                    "movie_idx": movie_idx,
-                    "chunk_idx": chunk_idx,
+                    "movie_id": doc["id"],
+                    "chunk_id": chunk_idx,
                     "total_chunks": total_chunks
                 })
         self.chunk_embeddings = self.model.encode(all_chunks, show_progress_bar=True)
@@ -119,26 +119,26 @@ class ChunkedSemanticSearch(SemanticSearch):
             cosine_score = cosine_similariy(query_embeddings, embeddings)
             metadata = self.chunk_metadata[idx]
             chunk_scores.append({
-                "chunk_idx": metadata["chunk_idx"],
-                "movie_idx": metadata["movie_idx"],
+                "chunk_id": metadata["chunk_id"],
+                "movie_id": metadata["movie_id"],
                 "score": float(cosine_score)
             })
         movie_scores = {}
         for chunk in chunk_scores:
-            movie_idx = chunk["movie_idx"]
+            movie_id = chunk["movie_id"]
             score = chunk["score"]
-            if movie_idx not in movie_scores or score > movie_scores[movie_idx]["score"]:
-                movie_scores[movie_idx] = chunk
+            if movie_id not in movie_scores or score > movie_scores[movie_id]["score"]:
+                movie_scores[movie_id] = chunk
         sorted_movies = sorted(movie_scores.values(), key=lambda x: x["score"], reverse=True)
         results = []
         for item in sorted_movies[:limit]:
-            movie = self.document_map[item["movie_idx"]]
+            movie = self.document_map[item["movie_id"]]
             results.append({
                 "id": movie["id"],
                 "title": movie["title"],
                 "description": movie["description"][:100],
                 "score": item["score"],
-                "metadata": item["chunk_idx"]
+                "metadata": item["chunk_id"]
             })
         return results
 
