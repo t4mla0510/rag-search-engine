@@ -6,7 +6,8 @@ from lib.hybrid_search import (
     fix_spelling,
     rewrite,
     expanding,
-    individual_rerank
+    individual_rerank,
+    batch_rerank
 )
 
 def main() -> None:
@@ -26,7 +27,7 @@ def main() -> None:
     rrf_search_parser.add_argument("--k", type=int, default=60, nargs="?", help="The k parameter to control weight betweene higher-rank and lower-rank one")
     rrf_search_parser.add_argument("--limit", type=int, default=5, nargs="?", help="Top-k limits")
     rrf_search_parser.add_argument("--enhance", type=str, choices=["spell", "rewrite", "expand"], nargs="?", help="Query enhancement method")
-    rrf_search_parser.add_argument("--rerank-method", type=str, choices=["individual"], nargs="?", help="Method to rerank")
+    rrf_search_parser.add_argument("--rerank-method", type=str, choices=["individual", "batch"], nargs="?", help="Method to rerank")
 
     args = parser.parse_args()
 
@@ -54,14 +55,21 @@ def main() -> None:
                 if enhance_func:
                     search_query = enhance_func(args.query)
                     print(f"Enhanced query ({args.enhance}): '{args.query}' -> '{search_query}'\n")
-            fetch_limit = args.limit*5 if args.rerank_method == "individual" else args.limit
+            fetch_limit = args.limit*5 if args.rerank_method else args.limit
             results = rrf_search_command(search_query, args.k, fetch_limit)
-            if args.rerank_method == "individual":
+            if args.rerank_method:
+                rerank_methods = {
+                    "individual": individual_rerank,
+                    "batch": batch_rerank
+                }
+                method = rerank_methods.get(args.rerank_method)
                 print(f"Reranking top {args.limit} results using individual method...")
                 print(f"Reciprocal Rank Fusion Results for '{args.query}' (k={args.k})\n")
-                results = individual_rerank(search_query, results, args.limit)
+                results = method(search_query, results, args.limit)
             for idx, res in enumerate(results, start=1):
                 print(f"{idx} {res["title"]}")
+                if res.get("rerank_rank") is not None:
+                    print(f"   Rerank Rank: {res["rerank_rank"]}")
                 if res.get("rerank_score") is not None:
                     print(f"   Rerank Score: {res["rerank_score"]}/10")
                 print(f"   BM25 Rank: {res["bm25_rank"]}, Semantic Rank: {res["semantic_rank"]}")

@@ -1,5 +1,7 @@
 import os
+import re
 import time
+import json
 from dotenv import load_dotenv
 
 from google import genai
@@ -121,6 +123,42 @@ class HybridSearch:
         sorted_results = sorted(final_results, key=lambda x: x["rrf_score"], reverse=True)
         return sorted_results[:limit]
 
+
+def batch_rerank(query: str, documents: list[dict], limit: int) -> list[dict]:
+    doc_list_str = "\n".join([f"ID: {d["id"]}. {d["title"]}: {d["description"]}" for d in documents])
+    
+    load_dotenv()
+    api_key = os.environ.get("GEMINI_API_KEY")
+    client = genai.Client(api_key=api_key)
+    system_prompt = f"""Rank these movies by relevance to the search query.
+
+    Query: "{query}"
+
+    Movies:
+    {doc_list_str}
+
+    Return ONLY the IDs in order of relevance (best match first). Return a valid JSON list, nothing else. For example:
+
+    [75, 12, 34, 2, 1]
+    """
+    response = client.models.generate_content(
+        model=LLM_MODEL,
+        contents=system_prompt
+    )
+    
+    raw_text = response.text.strip()
+    clean_json = re.sub(r'^```json\s*|\s*```$', '', raw_text)
+    ordered_doc_ids = json.loads(clean_json)
+    
+    final_result = []
+    doc_map = {str(d["id"]): d for d in documents}
+    for rank_idx, doc_id in enumerate(ordered_doc_ids):
+        doc = doc_map.get(str(doc_id))
+        if doc:
+            doc["rerank_rank"] = rank_idx + 1
+            final_result.append(doc)
+    return final_result[:limit]
+    
 
 def individual_rerank(query: str, documents: list[dict], limit: int) -> list[dict]:
     load_dotenv()
