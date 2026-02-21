@@ -1,8 +1,12 @@
 import os
+from dotenv import load_dotenv
 
-from .search_utils import load_movies
+from google import genai
+
+from .search_utils import load_movies, LLM_MODEL
 from .keyword_search import InvertedIndex
 from .semantic_search import ChunkedSemanticSearch
+
 
 class HybridSearch:
     def __init__(self, documents: list[dict]) -> None:
@@ -115,6 +119,25 @@ class HybridSearch:
             })
         sorted_results = sorted(final_results, key=lambda x: x["rrf_score"], reverse=True)
         return sorted_results[:limit]
+
+
+def fix_spelling(query: str) -> str:
+    system_prompt = f"""Fix any spelling errors in this movie search query.
+
+    Only correct obvious typos. Don't change correctly spelled words.
+
+    Query: "{query}"
+
+    If no errors, return the original query.
+    Corrected:"""
+    load_dotenv()
+    api_key = os.environ.get("GEMINI_API_KEY")
+    client = genai.Client(api_key=api_key)
+    response = client.models.generate_content(
+        model=LLM_MODEL,
+        contents=system_prompt
+    )
+    return response.text
 
 
 def rrf_search_command(query: str, k: float, limit: int) -> list[dict]:

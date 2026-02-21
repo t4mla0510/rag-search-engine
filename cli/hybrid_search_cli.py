@@ -2,7 +2,8 @@ import argparse
 from lib.hybrid_search import (
     normalize,
     weighted_search_command,
-    rrf_search_command
+    rrf_search_command,
+    fix_spelling
 )
 
 def main() -> None:
@@ -21,6 +22,7 @@ def main() -> None:
     rrf_search_parser.add_argument("query", type=str, help="Query to be searched")
     rrf_search_parser.add_argument("--k", type=int, default=60, nargs="?", help="The k parameter to control weight betweene higher-rank and lower-rank one")
     rrf_search_parser.add_argument("--limit", type=int, default=5, nargs="?", help="Top-k limits")
+    rrf_search_parser.add_argument("--enhance", type=str, choices=["spell"], nargs="?", help="Query enhancement method")
 
     args = parser.parse_args()
 
@@ -37,12 +39,23 @@ def main() -> None:
                 print(f"   BM25: {res["keyword_score"]:.4f}, Semantic: {res["semantic_score"]:.4f}")
                 print(f"   {res["description"]}...")
         case "rrf_search":
-            results = rrf_search_command(args.query, args.k, args.limit)
-            for idx, res in enumerate(results, start=1):
-                print(f"{idx} {res["title"]}")
-                print(f"   BM25 Rank: {res["bm25_rank"]}, Semantic Rank: {res["semantic_rank"]}")
-                print(f"   RRF score: {res["rrf_score"]:.4f}")
-                print(f"   {res["description"]}...")
+            if not args.enhance:
+                results = rrf_search_command(args.query, args.k, args.limit)
+                for idx, res in enumerate(results, start=1):
+                    print(f"{idx} {res["title"]}")
+                    print(f"   BM25 Rank: {res["bm25_rank"]}, Semantic Rank: {res["semantic_rank"]}")
+                    print(f"   RRF score: {res["rrf_score"]:.4f}")
+                    print(f"   {res["description"]}...")
+            else:
+                enhanced_query = fix_spelling(args.query)
+                print(f"Enhanced query ({args.enhance}): '{args.query}' -> '{enhanced_query}'\n")
+                results = rrf_search_command(enhanced_query, args.k, args.limit)
+                for idx, res in enumerate(results, start=1):
+                    print(f"{idx} {res["title"]}")
+                    print(f"   BM25 Rank: {res["bm25_rank"]}, Semantic Rank: {res["semantic_rank"]}")
+                    print(f"   RRF score: {res["rrf_score"]:.4f}")
+                    print(f"   {res["description"]}...")
+
         case _:
             parser.print_help()
 
