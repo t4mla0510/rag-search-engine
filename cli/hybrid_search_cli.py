@@ -8,7 +8,8 @@ from lib.hybrid_search import (
     expanding,
     individual_rerank,
     batch_rerank,
-    cross_encoder_rerank
+    cross_encoder_rerank,
+    llm_evaluate
 )
 
 def main() -> None:
@@ -29,6 +30,7 @@ def main() -> None:
     rrf_search_parser.add_argument("--limit", type=int, default=5, nargs="?", help="Top-k limits")
     rrf_search_parser.add_argument("--enhance", type=str, choices=["spell", "rewrite", "expand"], default="rewrite", nargs="?", help="Query enhancement method")
     rrf_search_parser.add_argument("--rerank-method", type=str, choices=["individual", "batch", "cross_encoder"], nargs="?", help="Method to rerank")
+    rrf_search_parser.add_argument("--evaluate", type=bool, nargs="?", help="Evaluate with LLM")
 
     args = parser.parse_args()
 
@@ -66,6 +68,9 @@ def main() -> None:
                 print(f"   RRF score: {res["rrf_score"]:.4f}")
                 print(f"   BM25 Rank: {res["bm25_rank"]}, Semantic Rank: {res["semantic_rank"]}")
                 print(f"   {res["description"]}...")
+            
+            if args.evaluate:
+                llm_evaluate(search_query, results)
             
             if args.rerank_method:
                 rerank_methods = {

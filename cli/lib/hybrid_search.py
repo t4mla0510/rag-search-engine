@@ -125,6 +125,48 @@ class HybridSearch:
         return sorted_results[:limit]
 
 
+def llm_evaluate(query: str, documents: list[dict]) -> list[int]:
+    formatted_results = [f"{d['id']}. {d['title']}: {d['description']}" for d in documents]
+    
+    load_dotenv()
+    api_key = os.environ.get("GEMINI_API_KEY")
+    client = genai.Client(api_key=api_key)
+    system_prompt = f"""Rate how relevant each result is to this query on a 0-3 scale:
+
+    Query: "{query}"
+
+    Results:
+    {"\n".join(formatted_results)}
+
+    Scale:
+    - 3: Highly relevant
+    - 2: Relevant
+    - 1: Marginally relevant
+    - 0: Not relevant
+
+    Do NOT give any numbers out than 0, 1, 2, or 3.
+
+    Return ONLY the scores in the same order you were given the documents. Return a valid JSON list, nothing else. For example:
+
+    [2, 0, 3, 2, 0, 1]"""
+    response = client.models.generate_content(
+        model=LLM_MODEL,
+        contents=system_prompt
+    )
+    raw_text = response.text.strip()
+    clean_json = re.sub(r'^```json\s*|\s*```$', '', raw_text)
+    scores = json.loads(clean_json)
+    
+    result = []
+    for idx, score in enumerate(scores):
+        doc = documents[idx]
+        doc["llm_score"] = score
+        result.append(doc)
+    sorted_result = sorted(result, key= lambda x: x["llm_score"], reverse=True)
+    for idx, res in enumerate(sorted_result, start=1):
+        print(f"{idx}. {res["title"]}: {res["llm_score"]}/3")
+
+
 def cross_encoder_rerank(query: str, documents: list[dict], limit: int):
     pairs = []
     for doc in documents:
