@@ -4,7 +4,8 @@ import argparse
 from dotenv import load_dotenv
 from google import genai
 
-from lib.hybrid_search import rrf_search_command
+from lib.hybrid_search import rrf_search_command, HybridSearch
+from lib.search_utils import load_movies
 
 def main():
     parser = argparse.ArgumentParser(description="Retrieval Augmented Generation CLI")
@@ -14,13 +15,17 @@ def main():
         "rag", help="Perform RAG (search + generate answer)"
     )
     rag_parser.add_argument("query", type=str, help="Search query for RAG")
+    
+    summarize_parser = subparsers.add_parser("summarize", help="Perform RAG summary")
+    summarize_parser.add_argument("query", type=str, help="Search query for RAG summary")
+    summarize_parser.add_argument("--limit", type=int, default=5, nargs="?", help="Search query for RAG summary")
 
     args = parser.parse_args()
 
     match args.command:
         case "rag":
             query = args.query
-            results = rrf_search_command(query, k=60, limit=5)
+            results = rrf_search_command(query)
             print("Search Results:")
             for res in results:
                 print(f"  - {res["title"]}")
@@ -41,6 +46,33 @@ def main():
                 contents=prompt
             )
             print("\nRAG Response:")
+            print(response.text)
+        case "summarize":
+            query = args.query
+            documents = load_movies()
+            hybrid_search = HybridSearch(documents)
+            results = hybrid_search.rrf_search(query)
+            print("Search Results:")
+            for res in results:
+                print(f"  - {res["title"]}")
+            
+            prompt = f"""
+            Provide information useful to this query by synthesizing information from multiple search results in detail.
+            The goal is to provide comprehensive information so that users know what their options are.
+            Your response should be information-dense and concise, with several key pieces of information about the genre, plot, etc. of each movie.
+            This should be tailored to Hoopla users. Hoopla is a movie streaming service.
+            Query: {query}
+            Search Results:
+            {results}
+            Provide a comprehensive 3-4 sentence answer that combines information from multiple sources:
+            """
+            load_dotenv()
+            client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt
+            )
+            print("\nLLM Summary:")
             print(response.text)
         case _:
             parser.print_help()
