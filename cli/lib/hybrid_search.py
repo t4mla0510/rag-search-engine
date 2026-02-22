@@ -321,7 +321,7 @@ def fix_spelling(query: str) -> str:
     return response.text
 
 
-def rrf_search_command(query: str, k: float, limit: int) -> list[dict]:
+def rrf_search_command(query: str, k: float = 60, limit: int = 5) -> list[dict]:
     documents = load_movies()
     hybrid_search = HybridSearch(documents)
     return hybrid_search.rrf_search(query, k, limit)
