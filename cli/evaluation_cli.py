@@ -25,12 +25,17 @@ def main():
         results = rrf_search_command(query, k=60, limit=limit)
         resultt_titles = [res["title"] for res in results]
         
-        relevant_found = sum(1 for title in resultt_titles if title in golden_titles)
-        precision = relevant_found / limit if limit > 0 else 0.0
+        relevant_retrievd_precision = sum(1 for title in resultt_titles if title in golden_titles)
+        relevant_retrievd_recall = sum(1 for title in golden_titles if title in resultt_titles)
+        
+        precision = relevant_retrievd_precision / limit if limit > 0 else 0.0
+        recall = relevant_retrievd_recall / len(golden_titles)
+        
         print(f"- Query: {query}")
-        print(f"   - Precision@{limit}: {precision}")
-        print( f"  - Retrieved: {",".join(resultt_titles)}")
-        print( f"  - Relevant: {",".join(golden_titles)}")
+        print(f"  - Precision@{limit}: {precision:.4f}")
+        print(f"  - Recall@{limit}: {recall:.4f}")
+        print(f"  - Retrieved: {",".join(resultt_titles)}")
+        print(f"  - Relevant: {",".join(golden_titles)}")
         
 
 if __name__ == "__main__":
