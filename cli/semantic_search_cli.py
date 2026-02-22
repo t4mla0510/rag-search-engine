@@ -18,12 +18,12 @@ def main():
 
     sub_parser.add_parser("verify", help="Verify the embedding model")
     
-    embedtext_parser = sub_parser.add_parser("embed_text", help="Get embeddings of input text")
+    embedtext_parser = sub_parser.add_parser("embed-text", help="Get embeddings of input text")
     embedtext_parser.add_argument("text", type=str, help="Text to be embedded")
 
-    sub_parser.add_parser("verify_embeddings", help="Verify generated embeddings")
+    sub_parser.add_parser("verify-embeddings", help="Verify generated embeddings")
 
-    embedquery_parser = sub_parser.add_parser("embed_query", help="Get embeddings of query")
+    embedquery_parser = sub_parser.add_parser("embed-query", help="Get embeddings of query")
     embedquery_parser.add_argument("query", type=str, help="Query to be embedded")
 
     search_parser = sub_parser.add_parser("search", help="Search with cosine similarity")
@@ -35,14 +35,14 @@ def main():
     chunking_parser.add_argument("--chunk_size", type=int, nargs="?", default=100, help="Size of chunk")
     chunking_parser.add_argument("--overlap", type=int, nargs="?", default=20, help="Overlap between chunks")
 
-    sentence_parser = sub_parser.add_parser("sentence_chunk", help="Semantic chunking given text")
+    sentence_parser = sub_parser.add_parser("sentence-chunk", help="Semantic chunking given text")
     sentence_parser.add_argument("text", type=str, help="Text to be chunked")
     sentence_parser.add_argument("--max_chunk_size", type=int, nargs="?", default=4, help="Size of chunk")
     sentence_parser.add_argument("--overlap", type=int, nargs="?", default=0, help="Overlap between chunks")
 
-    sub_parser.add_parser("embed_chunks", help="Create chunk embeddings of all documents")
+    sub_parser.add_parser("embed-chunks", help="Create chunk embeddings of all documents")
     
-    search_chunked_parser = sub_parser.add_parser("search_chunks", help="Search relevant chunks")
+    search_chunked_parser = sub_parser.add_parser("search-chunks", help="Search relevant chunks")
     search_chunked_parser.add_argument("query", type=str, help="Query to be searched")
     search_chunked_parser.add_argument("--limit", type=int, nargs="?", default=5, help="Top-k chunks")
 
@@ -51,11 +51,11 @@ def main():
     match args.command:
         case "verify":
             verify_model()
-        case "embed_text":
+        case "embed-text":
             embed_text(args.text)
-        case "verify_embeddings":
+        case "verify-embeddings":
             verify_embeddings()
-        case "embed_query":
+        case "embed-query":
             embed_query_text(args.query)
         case "search":
             movies = search_command(args.query, args.limit)
@@ -64,14 +64,14 @@ def main():
                 print(f"   {movie["description"][:100]} ...")
         case "chunk":
             chunk_command(args.text, args.chunk_size, args.overlap)
-        case "sentence_chunk":
+        case "sentence-chunk":
             chunks = sentence_chunk_command(args.text, args.max_chunk_size, args.overlap)
             print(f"Sentence chunking {len(chunks)} chunks")
             for idx, chunk in enumerate(chunks, start=1):
                 print(f"{idx}. {chunk}")
-        case "embed_chunks":
+        case "embed-chunks":
             embed_chunks_command()
-        case "search_chunks":
+        case "search-chunks":
             relevant_chunks = search_chunks_command(args.query, args.limit)
             for idx, chunk in enumerate(relevant_chunks, start=1):
                 print(f"\n{idx}. {chunk["title"]} (score: {chunk["score"]:.4f})")
