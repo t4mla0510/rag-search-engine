@@ -5,6 +5,7 @@ import json
 from dotenv import load_dotenv
 
 from google import genai
+from sentence_transformers import CrossEncoder
 
 from .search_utils import load_movies, LLM_MODEL
 from .keyword_search import InvertedIndex
@@ -122,6 +123,22 @@ class HybridSearch:
             })
         sorted_results = sorted(final_results, key=lambda x: x["rrf_score"], reverse=True)
         return sorted_results[:limit]
+
+
+def cross_encoder_rerank(query: str, documents: list[dict], limit: int):
+    pairs = []
+    for doc in documents:
+        pairs.append([query, f"{doc.get("title")} - {doc.get("description")}"])
+    cross_encoder = CrossEncoder("cross-encoder/ms-marco-TinyBERT-L2-v2")
+    scores = cross_encoder.predict(pairs)
+    results = []
+    for doc, score in zip(documents, scores):
+        results.append({
+            **doc,
+            "cross_encoder_score": score
+        })
+    sorted_results = sorted(results, key= lambda x: x["cross_encoder_score"], reverse=True)
+    return sorted_results[:limit]
 
 
 def batch_rerank(query: str, documents: list[dict], limit: int) -> list[dict]:
