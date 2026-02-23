@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from google import genai
 
 from lib.hybrid_search import rrf_search_command
-from lib.search_utils import load_movies
+from lib.search_utils import LLM_MODEL
 
 def main():
     parser = argparse.ArgumentParser(description="Retrieval Augmented Generation CLI")
@@ -50,7 +50,7 @@ def main():
             load_dotenv()
             client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model=LLM_MODEL,
                 contents=prompt
             )
             print("\nRAG Response:")
@@ -75,7 +75,7 @@ def main():
             load_dotenv()
             client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model=LLM_MODEL,
                 contents=prompt
             )
             print("\nLLM Summary:")
@@ -110,7 +110,7 @@ def main():
             load_dotenv()
             client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model=LLM_MODEL,
                 contents=prompt
             )
             print("\nLLM Answer:")
@@ -142,7 +142,7 @@ def main():
             load_dotenv()
             client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model=LLM_MODEL,
                 contents=prompt
             )
             print("\nAnswer:")
