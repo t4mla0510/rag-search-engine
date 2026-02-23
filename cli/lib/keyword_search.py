@@ -226,3 +226,25 @@ def tokenize_text(text: str) -> list[str]:
     stemmer = PorterStemmer()
     stemmed_words = [stemmer.stem(word) for word in filtered_words]
     return stemmed_words
+
+
+# Tool for Agent RAG
+from google.genai import types
+
+schema_keyword_search = types.FunctionDeclaration(
+    name="bm25_search_command",
+    description="Perform bm25 keyword search with the user query",
+    parameters=types.Schema(
+      type=types.Type.OBJECT,
+      properties={
+            "query": types.Schema(
+                type=types.Type.STRING,
+                description="The user query to search for specific movies"
+            ),
+            "limit": types.Schema(
+                type=types.Type.INTEGER,
+                description="The limit of returned result from reciprocal rank fusion search. If do not provided by user, make it default to 5"
+            )
+        }  
+    ),
+)

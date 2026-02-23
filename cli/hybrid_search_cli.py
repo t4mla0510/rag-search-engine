@@ -3,6 +3,7 @@ from lib.hybrid_search import (
     normalize,
     weighted_search_command,
     rrf_search_command,
+    create_llm_client,
     fix_spelling,
     rewrite,
     expanding,
@@ -56,7 +57,7 @@ def main() -> None:
                 }
                 enhance_func = enhance_functions.get(args.enhance)
                 if enhance_func:
-                    search_query = enhance_func(args.query)
+                    search_query = enhance_func(args.query, client=create_llm_client())
                     # Log the original query and the query after enhancements
                     print(f"Enhanced query ({args.enhance}): '{args.query}' -> '{search_query}'\n")
             fetch_limit = args.limit*5 if args.rerank_method else args.limit

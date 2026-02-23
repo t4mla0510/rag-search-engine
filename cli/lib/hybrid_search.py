@@ -177,7 +177,7 @@ def cross_encoder_rerank(query: str, documents: list[dict], limit: int):
     for doc, score in zip(documents, scores):
         results.append({
             **doc,
-            "cross_encoder_score": score
+            "cross_encoder_score": float(score)
         })
     sorted_results = sorted(results, key= lambda x: x["cross_encoder_score"], reverse=True)
     return sorted_results[:limit]
@@ -248,7 +248,7 @@ def individual_rerank(query: str, documents: list[dict], limit: int) -> list[dic
     return sorted_movies[:limit]
 
 
-def expanding(query: str) -> str:
+def expanding(query: str, client: genai.Client) -> str:
     system_prompt = f"""Expand this movie search query with related terms.
 
     Add synonyms and related concepts that might appear in movie descriptions.
@@ -263,9 +263,6 @@ def expanding(query: str) -> str:
 
     Query: "{query}"
     """
-    load_dotenv()
-    api_key = os.environ.get("GEMINI_API_KEY")
-    client = genai.Client(api_key=api_key)
     response = client.models.generate_content(
         model=LLM_MODEL,
         contents=system_prompt
@@ -273,7 +270,7 @@ def expanding(query: str) -> str:
     return response.text
 
 
-def rewrite(query: str) -> str:
+def rewrite(query: str, client: genai.Client) -> str:
     system_prompt = f"""Rewrite this movie search query to be more specific and searchable.
 
     Original: "{query}"
@@ -292,9 +289,6 @@ def rewrite(query: str) -> str:
     - "scary movie with bear from few years ago" -> "bear horror movie 2015-2020"
 
     Rewritten query:"""
-    load_dotenv()
-    api_key = os.environ.get("GEMINI_API_KEY")
-    client = genai.Client(api_key=api_key)
     response = client.models.generate_content(
         model=LLM_MODEL,
         contents=system_prompt
@@ -302,7 +296,7 @@ def rewrite(query: str) -> str:
     return response.text
 
 
-def fix_spelling(query: str) -> str:
+def fix_spelling(query: str, client: genai.Client) -> str:
     system_prompt = f"""Fix any spelling errors in this movie search query.
 
     Only correct obvious typos. Don't change correctly spelled words.
@@ -311,9 +305,6 @@ def fix_spelling(query: str) -> str:
 
     If no errors, return the original query.
     Corrected:"""
-    load_dotenv()
-    api_key = os.environ.get("GEMINI_API_KEY")
-    client = genai.Client(api_key=api_key)
     response = client.models.generate_content(
         model=LLM_MODEL,
         contents=system_prompt
@@ -321,13 +312,20 @@ def fix_spelling(query: str) -> str:
     return response.text
 
 
+def create_llm_client() -> genai.Client:
+    load_dotenv()
+    api_key = os.environ.get("GEMINI_API_KEY")
+    return genai.Client(api_key=api_key)
+
+
 def rrf_search_command(query: str, k: float = 60, limit: int = 5) -> list[dict]:
     documents = load_movies()
     hybrid_search = HybridSearch(documents)
-    return hybrid_search.rrf_search(query, k, limit)
+    results = hybrid_search.rrf_search(query, k, limit)
+    return cross_encoder_rerank(query, results, limit)
     
 
-def weighted_search_command(query: str, alpha: float, limit: float) -> list[dict]:
+def weighted_search_command(query: str, alpha: float, limit: int) -> list[dict]:
     documents = load_movies()
     hybrid_search = HybridSearch(documents)
     return hybrid_search.weighted_search(query, alpha, limit)
@@ -349,3 +347,54 @@ def hybrid_score(bm25_score, semantic_score, alpha=0.5) -> float:
 
 def rrf_score(rank: int, k: int = 60) -> float:
     return 1 / (k + rank)
+
+
+# Tool for Agent RAG
+from google.genai import types
+
+schema_rrf_search = types.FunctionDeclaration(
+    name="rrf_search",
+    description="Perform reciprocal rank fusion from keywords and vector search among list of related movies",
+    parameters=types.Schema(
+        type=types.Type.OBJECT,
+        properties={
+                "query": types.Schema(
+                    type=types.Type.STRING,
+                    description="The user query to search for specific movies"
+                ),
+                "k": types.Schema(
+                    type=types.Type.INTEGER,
+                    description="The k parameter for reciprocal rank fusion search, make it default with 60"
+                ),
+                "limit": types.Schema(
+                    type=types.Type.INTEGER,
+                    description="The limit of returned result from reciprocal rank fusion search. If do not provided by user, make it default to 5"
+                )
+            },
+        required=["query"]
+    ),
+)
+
+schema_rewrite = types.FunctionDeclaration(
+    name="rewrite",
+    description="Rewrite a vague movie search query to be more specific and searchable (e.g., adding actor names or genres).",
+    parameters=types.Schema(
+        type=types.Type.OBJECT,
+        properties={
+            "query": types.Schema(type=types.Type.STRING, description="The original user query")
+        },
+        required=["query"]
+    ),
+)
+
+schema_fix_spelling = types.FunctionDeclaration(
+    name="fix_spelling",
+    description="Fix obvious typos and spelling errors in a movie search query.",
+    parameters=types.Schema(
+        type=types.Type.OBJECT,
+        properties={
+            "query": types.Schema(type=types.Type.STRING, description="The query to check for typos")
+        },
+        required=["query"]
+    ),
+)

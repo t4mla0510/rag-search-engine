@@ -259,3 +259,25 @@ def cosine_similariy(vec1: list[float], vec2: list[float]) -> float:
     if norm1 == 0 or norm2 == 0:
         return 0.0
     return dot_product / (norm1 * norm2)
+
+
+# Tool for Agent RAG
+from google.genai import types
+
+schema_semantic_search = types.FunctionDeclaration(
+    name="search_chunks_command",
+    description="Perform semantic search with the user query",
+    parameters=types.Schema(
+      type=types.Type.OBJECT,
+      properties={
+            "query": types.Schema(
+                type=types.Type.STRING,
+                description="The user query to search for specific movies"
+            ),
+            "limit": types.Schema(
+                type=types.Type.INTEGER,
+                description="The limit of returned result from reciprocal rank fusion search. If do not provided by user, make it default to 5"
+            )
+        }  
+    ),
+)
