@@ -116,7 +116,7 @@ class HybridSearch:
             final_results.append({
                 "id": uid,
                 "title": data["title"],
-                "description": data["description"][:100],
+                "description": data["description"][:200],
                 "bm25_rank": data["bm25_rank"],
                 "semantic_rank": data["semantic_rank"],
                 "rrf_score": data["rrf_total"]

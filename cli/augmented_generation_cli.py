@@ -22,7 +22,11 @@ def main():
     
     citation_parser = subparsers.add_parser("citations", help="Perform RAG summary with citations")
     citation_parser.add_argument("query", type=str, help="Search query for RAG summary with citations")
-    citation_parser.add_argument("--limit", type=int, default=5, nargs="?", help="Search query for RAG summary with citations")
+    citation_parser.add_argument("--limit", type=int, default=5, nargs="?", help="Search limits")
+    
+    question_parser = subparsers.add_parser("question", help="Perform Q&A with RAG")
+    question_parser.add_argument("question", type=str, help="Question for Q&A RAG")
+    question_parser.add_argument("--limit", type=int, default=5, nargs="?", help="Search limits")
 
     args = parser.parse_args()
 
@@ -110,6 +114,38 @@ def main():
                 contents=prompt
             )
             print("\nLLM Answer:")
+            print(response.text)
+        case "question":
+            question = args.question
+            results = rrf_search_command(question)
+            print("Search Results:")
+            for res in results:
+                print(f"  - {res["title"]}")
+            
+            context = "\n".join([f"{res['id']}. {res['title']}: {res['description']}" for res in results])
+            prompt = f"""Answer the user's question based on the provided movies that are available on Hoopla.
+
+            This should be tailored to Hoopla users. Hoopla is a movie streaming service.
+
+            Question: {question}
+
+            Documents:
+            {context}
+
+            Instructions:
+            - Answer questions directly and concisely
+            - Be casual and conversational
+            - Don't be cringe or hype-y
+            - Talk like a normal person would in a chat conversation
+
+            Answer:"""
+            load_dotenv()
+            client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt
+            )
+            print("\nAnswer:")
             print(response.text)
         case _:
             parser.print_help()
