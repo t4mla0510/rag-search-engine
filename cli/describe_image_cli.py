@@ -14,7 +14,7 @@ if __name__ == "__main__":
     parser.add_argument("--image", required=True, type=str, help="The path to image file")
     parser.add_argument("--query", required=True, type=str, help="A text query to rewrite based on the image")
     
-    args = parser.parse_args
+    args = parser.parse_args()
     
     mime, _ = mimetypes.guess_type(args.image)
     mime = mime or "image/jpeg"
